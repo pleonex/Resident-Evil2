@@ -1,27 +1,45 @@
 ;; 801BC760
+;; Encoded file hard-coded to 0x806321A0
 ;; Static registers
+;; R16+0x00C8: start of Huffman things
+;; R16+0x00CC: Huffman root node index
+;; R16+0x00D8: Huffman tree (size: 0x4000)
+;; R16+0x40F0:
 ;; R16+0x40F4: Output file start pointer.
-;; R16+0x40F8: Current decoded position / decoded size.
+;; R16+0x40F8: Current decoded position.
+;; R19: Current position in tree (nodeIndex)
 ;; R22: Current decoded char.
-
+;; R31+0x08: Current encoded byte.
+;; R31+0x10: Current mask value.
+;; R31+0x18: If set use alternative file input.
+;; R31+0x1C: Alternative input file pointer.
+;; R31+0x20: Alternative input file position.
+;; R31+0x24: Current encoded position.
+;; R31+0x28: Current encoded block size.
+;; R31+0x2C:
+;; SP+0x0C: Codework bit.
+;; SP+0x18: Current huffman tree value, to apply as decoded value.
+;; SP+0x20: Position in encoded block?
+;; SP+0x28: Root tree node.
+;; SP+0x2C:
 
 start:
 8047feb8  stwu    sp, -0x0080 (sp)
 8047febc  mflr    r0
-8047fec0  stw    r0, 0x0084 (sp)
+8047fec0  stw     r0, 0x0084 (sp)
 8047fec4  addi    r11, sp, 128
-8047fec8  bl    ->0x80049D8C
-8047fecc  lis    r3, 0x8063                             ; Set R31 to 0x80632120
+8047fec8  bl      0x80049D8C
+8047fecc  lis     r3, 0x8063                             ; Set R31 to 0x80632120
 8047fed0  addi    r31, r3, 8480                          ; ...
-8047fed4  addis    r16, r31, 1                            ; Set R16 to 0x80642120
-8047fed8  li    r5, 8
-8047fedc  stw    r5, 0x00B4 (r16)
-8047fee0  li    r3, 16
+8047fed4  addis   r16, r31, 1                            ; Set R16 to 0x80642120
+8047fed8  li      r5, 8
+8047fedc  stw     r5, 0x00B4 (r16)
+8047fee0  li      r3, 16
 8047fee4  addi    r4, r16, 180
-8047fee8  stw    r3, 0x0004 (r4)
-8047feec  lwz    r3, 0x008C (r16)
+8047fee8  stw     r3, 0x0004 (r4)
+8047feec  lwz     r3, 0x008C (r16)
 8047fef0  subi    r0, r16, 32628
-8047fef4  add    r5, r0, r3
+8047fef4  add     r5, r0, r3
 8047fef8  addi    r3, r16, 180
 8047fefc  stw    r5, 0x0010 (r3)
 8047ff00  lwz    r4, 0x008C (r16)
@@ -370,7 +388,9 @@ start:
 8048045c  li    r3, 0
 80480460  stw    r3, 0x0034 (sp)
 80480464  li    r23, 0
-80480468  li    r26, 8
+
+80480468
+    li    r26, 8
 8048046c  li    r21, 0
 80480470  lwz    r3, 0x0018 (r31)
 80480474  cmpwi    r3, 0
@@ -614,51 +634,75 @@ start:
 8048082c  stw    r4, 0x0024 (sp)
 80480830  li    r5, 0
 80480834  stw    r5, 0x002C (sp)
-80480838  b    ->0x80480DB8
+80480838  b    cond_loop
 
-next_iter:
-8048083c  lwz    r19, 0x0028 (sp)
-80480840  lwz    r4, 0x0010 (r31)
-80480844  subi    r0, r4, 1
-80480848  stw    r0, 0x0010 (r31)
-8048084c  cmpwi    r0, 0
-80480850  blt-     ->0x8048086C
-80480854  lwz    r5, 0x0008 (r31)
-80480858  lwz    r3, 0x0010 (r31)
-8048085c  srw    r4, r5, r3
-80480860  rlwinm    r3, r4, 0, 31, 31 (00000001)
-80480864  stw    r3, 0x000C (sp)
-80480868  b    ->0x80480954
-8048086c  li    r0, 7
-80480870  stw    r0, 0x0010 (r31)
-80480874  lwz    r3, 0x0018 (r31)
+; Set the cursor in the root node (0x200)
+start_tree_walk:
+    lwz      r19, 0x0028 (sp)
+
+; Walk through the tree to the next node.
+tree_next_node:
+    ; Update the mask bit for the codework.
+    lwz      r4, 0x0010 (r31)
+    subi     r0, r4, 1
+    stw      r0, 0x0010 (r31)
+
+    ; If have already process the full codework byte, get a new one.
+    cmpwi    r0, 0
+    blt-     tree_get_codework_byte
+
+    ; Get the codework bit
+    lwz      r5, 0x0008 (r31)               ; Get the current codework byte.
+    lwz      r3, 0x0010 (r31)               ; Get the current mask value.
+    srw      r4, r5, r3                     ; Get the current codework bit.
+    rlwinm   r3, r4, 0, 31, 31 (00000001)   ; ... first a shift and now an AND.
+    stw      r3, 0x000C (sp)                ; ... store the bit.
+    b        tree_walk                      ; Let's walk;
+
+tree_get_codework_byte:
+    ; Refill the codework bit mask
+    li    r0, 7
+    stw    r0, 0x0010 (r31)
+
+    ; If (R31+0x18) is set, get the encoded byte from (R31+0x1C)
+80480874  lwz      r3, 0x0018 (r31)
 80480878  cmpwi    r3, 0
-8048087c  beq-     ->0x804808A0
-80480880  lwz    r5, 0x001C (r31)
-80480884  lwz    r4, 0x0020 (r31)
-80480888  addi    r3, r4, 1
-8048088c  stw    r3, 0x0020 (r31)
-80480890  lbzx    r3, r5, r4
+8048087c  beq-     tree_get_codework_byte_file2
+
+    ; Get the encoded byte from the alternative position.
+tree_get_codework_byte_file1:
+80480880  lwz      r5, 0x001C (r31)
+80480884  lwz      r4, 0x0020 (r31)
+80480890  lbzx     r3, r5, r4
+80480888  addi     r3, r4, 1
+8048088c  stw      r3, 0x0020 (r31)
 80480894  extsb    r0, r3
-80480898  stw    r0, 0x0008 (r31)
-8048089c  b    ->0x80480948
-804808a0  lwz    r0, 0x0024 (r31)
-804808a4  lwz    r3, 0x0028 (r31)
-804808a8  cmpw    r0, r3
-804808ac  blt-     ->0x80480924
-804808b0  addi    r3, r31, 44
-804808b4  lis    r5, 0x8063
-804808b8  addi    r4, r5, 8608
-804808bc  lwz    r5, -0x7F80 (r16)
-804808c0  lwz    r6, -0x7F7C (r16)
-804808c4  li    r7, 0
-804808c8  bl    ->0x80522458
-804808cc  stw    r3, 0x0028 (r31)
+80480898  stw      r0, 0x0008 (r31)
+8048089c  b        tree_get_codework_byte_setBit
+
+tree_get_codework_byte_file2:
+    ; Check if the block is fully read.
+    lwz      r0, 0x0024 (r31)
+    lwz      r3, 0x0028 (r31)
+    cmpw     r0, r3
+    blt-     tree_get_codework_byte_read
+
+    addi     r3, r31, 0x2C
+804808b4  lis      r5, 0x8063               ; Get file pointer
+804808b8  addi     r4, r5, 0x21A0           ; ...
+804808bc  lwz      r5, -0x7F80 (r16)
+804808c0  lwz      r6, -0x7F7C (r16)
+804808c4  li       r7, 0
+804808c8  bl       80522458
+
+804808cc  stw      r3, 0x0028 (r31)
 804808d0  cmpwi    r3, 0
-804808d4  bge-     ->0x804808E4
-804808d8  li    r4, 0
-804808dc  stw    r4, 0x000C (sp)
-804808e0  b    ->0x80480954
+804808d4  bge-     804808E4
+
+804808d8  li       r4, 0
+804808dc  stw      r4, 0x000C (sp)
+804808e0  b        tree_walk
+
 804808e4  li    r3, 0
 804808e8  stw    r3, 0x0024 (r31)
 804808ec  lwz    r3, -0x7F7C (r16)
@@ -670,74 +714,103 @@ next_iter:
 80480904  lwz    r0, -0x7F80 (r16)
 80480908  add    r0, r3, r0
 8048090c  cmpw    r4, r0
-80480910  bge-     ->0x80480924
+80480910  bge-     tree_get_codework_byte_read
 80480914  lwz    r5, -0x7F7C (r16)
 80480918  lwz    r3, -0x7F78 (r16)
 8048091c  sub    r4, r3, r5
 80480920  stw    r4, -0x7F80 (r16)
-80480924  lwz    r3, 0x0024 (r31)
-80480928  mr    r0, r3
-8048092c  addi    r5, r3, 1
-80480930  stw    r5, 0x0024 (r31)
-80480934  lis    r3, 0x8063
-80480938  addi    r4, r3, 8608
-8048093c  add    r3, r4, r0
-80480940  lbz    r0, 0 (r3)
-80480944  stw    r0, 0x0008 (r31)
-80480948  lwz    r0, 0x0008 (r31)
-8048094c  rlwinm    r3, r0, 25, 31, 31 (00000080)
-80480950  stw    r3, 0x000C (sp)
-80480954  lwz    r4, 0x000C (sp)
-80480958  cmplwi    r4, 0
-8048095c  beq-     ->0x80480978
-80480960  addi    r3, r16, 200
-80480964  lwz    r5, 0x0010 (r3)
-80480968  rlwinm    r4, r19, 4, 0, 27 (0fffffff)
-8048096c  addi    r3, r4, 12
-80480970  lwzx    r19, r5, r3
-80480974  b    ->0x8048098C
-80480978  addi    r5, r16, 200
-8048097c  lwz    r4, 0x0010 (r5)
-80480980  rlwinm    r3, r19, 4, 0, 27 (0fffffff)
-80480984  addi    r0, r3, 8
-80480988  lwzx    r19, r4, r0
-8048098c  addi    r7, r16, 200
-80480990  lwz    r3, 0x0004 (r7)
-80480994  cmpw    r19, r3
-80480998  bge+     ->0x80480840
-8048099c  stw    r19, 0x0018 (sp)
-804809a0  lwz    r22, 0x0018 (sp)
-804809a4  cmpwi    r22, 256
-804809a8  bge-     ->0x804809E0
 
+tree_get_codework_byte_read:
+    lwz    r3, 0x0024 (r31)             ; Get current input position
+    mr      r0, r3                      ; ...
+    addi    r5, r3, 1                   ; Increment input position.
+    stw     r5, 0x0024 (r31)            ; ...
+    lis     r3, 0x8063                  ; Input file pointer.
+    addi    r4, r3, 0x21A0              ; ...
+    add     r3, r4, r0                  ; Read next byte.
+    lbz     r0, 0 (r3)                  ; ...
+    stw     r0, 0x0008 (r31)            ; and store it.
+
+tree_get_codework_byte_setBit:
+    lwz      r0, 0x0008 (r31)
+    rlwinm   r3, r0, 25, 31, 31 (00000080)
+    stw      r3, 0x000C (sp)
+
+tree_walk
+    ; Check the value of the codework bit.
+    lwz      r4, 0x000C (sp)
+    cmplwi   r4, 0
+    beq-     tree_walk_toLeft
+
+tree_walk_toRight:
+    ; Get the huffman tree table.
+    addi     r3, r16, 0xC8
+    lwz      r5, 0x0010 (r3)
+
+    ; The next node is at (nodeIndex * 2^4) + 12 (each nodeEntry is 16 bytes).
+    rlwinm   r4, r19, 4, 0, 27 (0fffffff)
+    addi     r3, r4, 12
+    lwzx     r19, r5, r3
+    b        tree_walk_checkIfValue
+
+tree_walk_toLeft:
+    ; Get the huffman tree table.
+    addi     r5, r16, 0xC8
+    lwz      r4, 0x0010 (r5)
+
+    ; The next node is at (nodeIndex * 2^4) + 8 (each nodeEntry is 16 bytes).
+    rlwinm   r3, r19, 4, 0, 27 (0fffffff)
+    addi     r0, r3, 8
+    lwzx     r19, r4, r0
+
+tree_walk_checkIfValue:
+    ; Check the current node index agains the root node index.
+    addi     r7, r16, 0xC8
+    lwz      r3, 0x0004 (r7)
+    cmpw     r19, r3
+    bge+     tree_next_node             ; If it's greater is not a value, jump!
+
+    ; If it's value store.
+    stw      r19, 0x0018 (sp)
+    lwz      r22, 0x0018 (sp)
+
+    ; If the node value is bigger than 0x100
+    cmpwi    r22, 0x100
+    bge-    0x804809E0
+
+decode_rawByte:
+    ; Store the decoded value in the next position.
     extsb   r5, r22                               ; Set decoded char
-804809b0  lwz     r4, 0x40F4 (r16)                      ; Get the file start pointer.
-804809b4  lwz     r6, 0x40F8 (r16)                      ; Get current position.
-804809b8  addi    r3, r6, 1                             ; Increment position
-804809bc  stw     r3, 0x40F8 (r16)                      ; ... and store it
-804809c0  stbx    r5, r4, r6                            ; Store the decoded byte.
-804809c4  rlwinm  r5, r22, 0, 24, 31 (000000ff)         ; Set R22 to R5 (castings...).
-804809c8  mr      r4, r23                               ; R4 = R23 and CR0 if zero.
-804809cc  addi    r23, r23, 1                           ; Increment R23
-804809d0  addi    r3, r16, 0xF0                         ; Store the decoded byte in...
-804809d4  stbx    r5, r3, r4                            ; ... ???
-804809d8  rlwinm  r23, r23, 0, 18, 31 (00003fff)        ; Mask the increment
-804809dc  b       condition_loop                        ; Check EOF.
+    lwz     r4, 0x40F4 (r16)                      ; Get the output file pointer.
+    lwz     r6, 0x40F8 (r16)                      ; Get current position.
+    stbx    r5, r4, r6                            ; Store the decoded byte in??
+    addi    r3, r6, 1                             ; Increment position
+    stw     r3, 0x40F8 (r16)                      ; ... and store it.
 
-804809e0  subi    r5, r22, 253
-804809e4  stw    r5, 0x0034 (sp)
-804809e8  lwz    r18, 0x0024 (sp)
-804809ec  lwz    r3, 0x0010 (r31)
+    ; Write the decoded value in the cache too.
+    rlwinm  r5, r22, 0, 24, 31 (000000ff)         ; Set the value again (castings...).
+    mr      r4, r23                               ; R4 = cache position.
+    addi    r3, r16, 0xF0                         ; Store the decoded byte in...
+    stbx    r5, r3, r4                            ; ... the cache.
+    addi    r23, r23, 1                           ; Increment the cache pointer.
+    rlwinm  r23, r23, 0, 18, 31 (00003fff)        ; Mask the increment
+    b       incr_loop                             ; Check EOF.
+
+804809e0
+    subi    r5, r22, 253
+804809e4  stw     r5, 0x0034 (sp)
+804809e8  lwz     r18, 0x0024 (sp)
+804809ec  lwz     r3, 0x0010 (r31)
 804809f0  subi    r4, r3, 1
-804809f4  stw    r4, 0x0010 (r31)
-804809f8  cmpwi    r4, 0
-804809fc  blt-     ->0x80480A18
-80480a00  lwz    r3, 0x0008 (r31)
-80480a04  lwz    r0, 0x0010 (r31)
-80480a08  srw    r4, r3, r0
-80480a0c  rlwinm    r3, r4, 0, 31, 31 (00000001)
-80480a10  stw    r3, 0x0008 (sp)
-80480a14  b    ->0x80480B00
+804809f4  stw     r4, 0x0010 (r31)
+804809f8  cmpwi   r4, 0
+804809fc  blt-    0x80480A18
+80480a00  lwz     r3, 0x0008 (r31)
+80480a04  lwz     r0, 0x0010 (r31)
+80480a08  srw     r4, r3, r0
+80480a0c  rlwinm  r3, r4, 0, 31, 31 (00000001)
+80480a10  stw     r3, 0x0008 (sp)
+80480a14  b       0x80480B00
 80480a18  li    r0, 7
 80480a1c  stw    r0, 0x0010 (r31)
 80480a20  lwz    r3, 0x0018 (r31)
@@ -968,17 +1041,19 @@ next_iter:
 80480da4  cmpwi    r0, 0
 80480da8  bge+     ->0x80480D48
 
-condition_loop:
+incr_loop:
+    ; Increment
     lwz     r5, 0x002C (sp)
     addi    r3, r5, 1
     stw     r3, 0x002C (sp)
 
-80480db8
+cond_loop:
+    ; Compare  to other thing.
     lwz     r4, 0x002C (sp)
     lwz     r3, 0x40F0 (r16)
     cmplw   r4, r3
-    blt+    0x8048083C
-    b       0x80480468
+    blt+    start_tree_walk                 ; If less continue
+    b       0x80480468                      ; Otherwise
 
 quit:
     addi    r11, sp, 128
