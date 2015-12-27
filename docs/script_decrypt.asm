@@ -1,4 +1,4 @@
-;; 801BC760
+;; Output file at (dynamic): 801BC760
 ;; Encoded file hard-coded to 0x806321A0
 ;; Static registers
 ;; R16+0x00C8: start of Huffman things
@@ -661,24 +661,24 @@ tree_next_node:
 
 tree_get_codework_byte:
     ; Refill the codework bit mask
-    li    r0, 7
-    stw    r0, 0x0010 (r31)
+    li       r0, 7
+    stw      r0, 0x0010 (r31)
 
     ; If (R31+0x18) is set, get the encoded byte from (R31+0x1C)
-80480874  lwz      r3, 0x0018 (r31)
-80480878  cmpwi    r3, 0
-8048087c  beq-     tree_get_codework_byte_file2
+    lwz      r3, 0x0018 (r31)
+    cmpwi    r3, 0
+    beq-     tree_get_codework_byte_file2
 
     ; Get the encoded byte from the alternative position.
 tree_get_codework_byte_file1:
-80480880  lwz      r5, 0x001C (r31)
-80480884  lwz      r4, 0x0020 (r31)
-80480890  lbzx     r3, r5, r4
-80480888  addi     r3, r4, 1
-8048088c  stw      r3, 0x0020 (r31)
-80480894  extsb    r0, r3
-80480898  stw      r0, 0x0008 (r31)
-8048089c  b        tree_get_codework_byte_setBit
+    lwz      r5, 0x001C (r31)
+    lwz      r4, 0x0020 (r31)
+    lbzx     r3, r5, r4
+    addi     r3, r4, 1
+    stw      r3, 0x0020 (r31)
+    extsb    r0, r3
+    stw      r0, 0x0008 (r31)
+    b        tree_get_codework_byte_setBit
 
 tree_get_codework_byte_file2:
     ; Check if the block is fully read.
@@ -721,7 +721,7 @@ tree_get_codework_byte_file2:
 80480920  stw    r4, -0x7F80 (r16)
 
 tree_get_codework_byte_read:
-    lwz    r3, 0x0024 (r31)             ; Get current input position
+    lwz     r3, 0x0024 (r31)            ; Get current input position
     mr      r0, r3                      ; ...
     addi    r5, r3, 1                   ; Increment input position.
     stw     r5, 0x0024 (r31)            ; ...
@@ -811,29 +811,29 @@ decode_rawByte:
 80480a0c  rlwinm  r3, r4, 0, 31, 31 (00000001)
 80480a10  stw     r3, 0x0008 (sp)
 80480a14  b       0x80480B00
-80480a18  li    r0, 7
-80480a1c  stw    r0, 0x0010 (r31)
-80480a20  lwz    r3, 0x0018 (r31)
-80480a24  cmpwi    r3, 0
-80480a28  beq-     ->0x80480A4C
-80480a2c  lwz    r4, 0x001C (r31)
-80480a30  lwz    r3, 0x0020 (r31)
+80480a18  li      r0, 7
+80480a1c  stw     r0, 0x0010 (r31)
+80480a20  lwz     r3, 0x0018 (r31)
+80480a24  cmpwi   r3, 0
+80480a28  beq-    80480A4C
+80480a2c  lwz     r4, 0x001C (r31)
+80480a30  lwz     r3, 0x0020 (r31)
 80480a34  addi    r0, r3, 1
-80480a38  stw    r0, 0x0020 (r31)
+80480a38  stw     r0, 0x0020 (r31)
 80480a3c  lbzx    r4, r4, r3
-80480a40  extsb    r3, r4
-80480a44  stw    r3, 0x0008 (r31)
-80480a48  b    ->0x80480AF4
-80480a4c  lwz    r0, 0x0024 (r31)
-80480a50  lwz    r3, 0x0028 (r31)
+80480a40  extsb   r3, r4
+80480a44  stw     r3, 0x0008 (r31)
+80480a48  b       80480AF4
+80480a4c  lwz     r0, 0x0024 (r31)
+80480a50  lwz     r3, 0x0028 (r31)
 80480a54  cmpw    r0, r3
-80480a58  blt-     ->0x80480AD0
+80480a58  blt-    80480AD0
 80480a5c  addi    r3, r31, 44
-80480a60  lis    r5, 0x8063
+80480a60  lis     r5, 0x8063
 80480a64  addi    r4, r5, 8608
-80480a68  lwz    r5, -0x7F80 (r16)
-80480a6c  lwz    r6, -0x7F7C (r16)
-80480a70  li    r7, 0
+80480a68  lwz     r5, -0x7F80 (r16)
+80480a6c  lwz     r6, -0x7F7C (r16)
+80480a70  li      r7, 0
 80480a74  bl    ->0x80522458
 80480a78  stw    r3, 0x0028 (r31)
 80480a7c  cmpwi    r3, 0
@@ -1014,32 +1014,37 @@ decode_rawByte:
 80480d38  sub    r3, r23, r27
 80480d3c  subi    r3, r3, 1
 80480d40  rlwinm    r27, r3, 0, 18, 31 (00003fff)
-80480d44  b    ->0x80480D98
-80480d48  mr    r0, r27
+80480d44  b       80480D98
+
+80480d48  mr      r0, r27
 80480d4c  addi    r27, r27, 1
-80480d50  addi    r4, r16, 240
+80480d50  addi    r4, r16, 0xF0
 80480d54  lbzx    r3, r4, r0
-80480d58  stw    r3, 0x0030 (sp)
-80480d5c  lwz    r3, 0x0030 (sp)
-80480d60  extsb    r0, r3
-80480d64  lwz    r5, 0x40F4 (r16)
-80480d68  lwz    r3, 0x40F8 (r16)
-80480d6c  addi    r4, r3, 1
-80480d70  stw    r4, 0x40F8 (r16)
+80480d58  stw     r3, 0x0030 (sp)
+
+80480d5c  lwz     r3, 0x0030 (sp)
+80480d60  extsb   r0, r3
+80480d64  lwz     r5, 0x40F4 (r16)
+80480d68  lwz     r3, 0x40F8 (r16)
 80480d74  stbx    r0, r5, r3
-80480d78  lwz    r0, 0x0030 (sp)
-80480d7c  rlwinm    r5, r0, 0, 24, 31 (000000ff)
-80480d80  mr    r3, r23
+80480d6c  addi    r4, r3, 1
+80480d70  stw     r4, 0x40F8 (r16)
+
+80480d78  lwz     r0, 0x0030 (sp)
+80480d7c  rlwinm  r5, r0, 0, 24, 31 (000000ff)
+80480d80  mr      r3, r23
 80480d84  addi    r23, r23, 1
 80480d88  addi    r4, r16, 240
 80480d8c  stbx    r5, r4, r3
-80480d90  rlwinm    r23, r23, 0, 18, 31 (00003fff)
-80480d94  rlwinm    r27, r27, 0, 18, 31 (00003fff)
-80480d98  lwz    r3, 0x0034 (sp)
+80480d90  rlwinm  r23, r23, 0, 18, 31 (00003fff)
+80480d94  rlwinm  r27, r27, 0, 18, 31 (00003fff)
+
+80480d98
+    lwz     r3, 0x0034 (sp)
 80480d9c  subi    r0, r3, 1
-80480da0  stw    r0, 0x0034 (sp)
-80480da4  cmpwi    r0, 0
-80480da8  bge+     ->0x80480D48
+80480da0  stw     r0, 0x0034 (sp)
+80480da4  cmpwi   r0, 0
+80480da8  bge+    80480D48
 
 incr_loop:
     ; Increment
