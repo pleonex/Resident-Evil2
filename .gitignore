@@ -1,0 +1,4 @@
+# C# projects
+*.userprefs
+bin/
+obj/
