@@ -1,27 +1,49 @@
+;; Code extracted from game. Some instruction has been sorted for good reading
+;; Use only for learning purpouse
+;;
+;; THIS IS A MODIFIED VERSION OF THE DEFLATE (RFC 1951) ALGORITHM.
 ;; Output file at (dynamic): 801BC760
 ;; Encoded file hard-coded to 0x806321A0
 ;; Static registers
-;; R16+0x00C8: start of Huffman things
-;; R16+0x00CC: Huffman root node index
-;; R16+0x00D8: Huffman tree (size: 0x4000)
+;; R16+0x008C: (set to 0 at init).
+;; R16+0x00C8:
+;; R16+0x00CC: Huffman root node index (0x200)
+;; R16+0x00F0: Cache (size: 0x2000)
+;; R16+0x20D8: Huffman tree (size: 0x2000)
 ;; R16+0x40F0:
 ;; R16+0x40F4: Output file start pointer.
-;; R16+0x40F8: Current decoded position.
+;; R16+0x40F8: Current decoded position (set to 0 at init).
 ;; R19: Current position in tree (nodeIndex)
 ;; R22: Current decoded char.
-;; R31+0x08: Current encoded byte.
-;; R31+0x10: Current mask value.
-;; R31+0x18: If set use alternative file input.
+;; R23: Cache position.
+;; R27: Distance in the cache.
+;; R31+0x00: (set to 0 at init).
+;; R31+0x04: (set to 0 at init).
+;; R31+0x08: Current encoded byte (set to 0 at init).
+;; R31+0x0C: (set to 0 at init).
+;; R31+0x10: Current mask value (set to 0 at init).
+;; R31+0x14: (set to 0 at init).
+;; R31+0x18: If set use alternative file input (set to 0 at init).
 ;; R31+0x1C: Alternative input file pointer.
 ;; R31+0x20: Alternative input file position.
-;; R31+0x24: Current encoded position.
+;; R31+0x24: Current encoded position (set to 0 at init).
 ;; R31+0x28: Current encoded block size.
-;; R31+0x2C:
-;; SP+0x0C: Codework bit.
-;; SP+0x18: Current huffman tree value, to apply as decoded value.
+;; R31+0x2C: File path
+;; SP+0x08: Codework huffman tree2 bit.
+;; SP+0x0C: Codework huffman tree1 bit.
+;; SP+0x14: Current huffman tree2 value
+;; SP+0x18: Current huffman tree1 value
 ;; SP+0x20: Position in encoded block?
+;; SP+0x24:
 ;; SP+0x28: Root tree node.
 ;; SP+0x2C:
+;; SP+0x30:
+;; SP+0x34:
+;; Node Entry:
+;; 0x00: Left child index in tree1.
+;; 0x04: Right child index in tree2.
+;; 0x08: Left child index in tree2.
+;; 0x0C: Right child index in tree1.
 
 start:
 8047feb8  stwu    sp, -0x0080 (sp)
@@ -774,7 +796,8 @@ tree_walk_checkIfValue:
     stw      r19, 0x0018 (sp)
     lwz      r22, 0x0018 (sp)
 
-    ; If the node value is bigger than 0x100
+    ; If the node value is bigger or equal to 0x100. That is, if the decoded value would be bigger than a byte...
+    ; it's not a decoded value.
     cmpwi    r22, 0x100
     bge-    0x804809E0
 
@@ -797,25 +820,32 @@ decode_rawByte:
     b       incr_loop                             ; Check EOF.
 
 804809e0
-    subi    r5, r22, 253
-804809e4  stw     r5, 0x0034 (sp)
+    subi    r5, r22, 253                            ; Get the number of iterations
+804809e4  stw     r5, 0x0034 (sp)                         ; And store them
+
 804809e8  lwz     r18, 0x0024 (sp)
-804809ec  lwz     r3, 0x0010 (r31)
-804809f0  subi    r4, r3, 1
-804809f4  stw     r4, 0x0010 (r31)
-804809f8  cmpwi   r4, 0
-804809fc  blt-    0x80480A18
-80480a00  lwz     r3, 0x0008 (r31)
-80480a04  lwz     r0, 0x0010 (r31)
+
+; Consume another bit from the input
+804809ec  lwz     r3, 0x0010 (r31)                        ; Get mask bit
+804809f0  subi    r4, r3, 1                               ; And update it
+804809f4  stw     r4, 0x0010 (r31)                        ; ...
+804809f8  cmpwi   r4, 0                                   ; If there aren't more bits to consume
+804809fc  blt-    0x80480A18                              ; ... load them
+
+80480a00  lwz     r3, 0x0008 (r31)                        ; Get the current encoded byte
+80480a04  lwz     r0, 0x0010 (r31)                        ; And the current mask bit
 80480a08  srw     r4, r3, r0
 80480a0c  rlwinm  r3, r4, 0, 31, 31 (00000001)
 80480a10  stw     r3, 0x0008 (sp)
 80480a14  b       0x80480B00
+
+; Get more data
 80480a18  li      r0, 7
 80480a1c  stw     r0, 0x0010 (r31)
 80480a20  lwz     r3, 0x0018 (r31)
 80480a24  cmpwi   r3, 0
 80480a28  beq-    80480A4C
+; from file1
 80480a2c  lwz     r4, 0x001C (r31)
 80480a30  lwz     r3, 0x0020 (r31)
 80480a34  addi    r0, r3, 1
@@ -824,6 +854,7 @@ decode_rawByte:
 80480a40  extsb   r3, r4
 80480a44  stw     r3, 0x0008 (r31)
 80480a48  b       80480AF4
+; from file2
 80480a4c  lwz     r0, 0x0024 (r31)
 80480a50  lwz     r3, 0x0028 (r31)
 80480a54  cmpw    r0, r3
@@ -857,41 +888,57 @@ decode_rawByte:
 80480ac4  lwz    r0, -0x7F78 (r16)
 80480ac8  sub    r3, r0, r3
 80480acc  stw    r3, -0x7F80 (r16)
-80480ad0  lwz    r5, 0x0024 (r31)
-80480ad4  mr    r4, r5
-80480ad8  addi    r0, r5, 1
-80480adc  stw    r0, 0x0024 (r31)
-80480ae0  lis    r3, 0x8063
-80480ae4  addi    r0, r3, 8608
-80480ae8  add    r3, r0, r4
-80480aec  lbz    r4, 0 (r3)
-80480af0  stw    r4, 0x0008 (r31)
-80480af4  lwz    r5, 0x0008 (r31)
-80480af8  rlwinm    r3, r5, 25, 31, 31 (00000080)
-80480afc  stw    r3, 0x0008 (sp)
-80480b00  lwz    r0, 0x0008 (sp)
-80480b04  cmplwi    r0, 0
-80480b08  beq-     ->0x80480B24
-80480b0c  addi    r3, r16, 220
+
+; byte_read
+80480ad0  lwz      r5, 0x0024 (r31)
+80480ad4  mr       r4, r5
+80480ad8  addi     r0, r5, 1
+80480adc  stw      r0, 0x0024 (r31)
+80480ae0  lis      r3, 0x8063
+80480ae4  addi     r0, r3, 8608
+80480ae8  add      r3, r0, r4
+80480aec  lbz      r4, 0 (r3)
+80480af0  stw      r4, 0x0008 (r31)
+
+; set_bit
+80480af4  lwz      r5, 0x0008 (r31)
+80480af8  rlwinm   r3, r5, 25, 31, 31 (00000080)
+80480afc  stw      r3, 0x0008 (sp)
+
+; tree_walk
+80480b00  lwz      r0, 0x0008 (sp)
+80480b04  cmplwi   r0, 0
+80480b08  beq-     80480B24
+
+; toRight
+80480b0c  addi     r3, r16, 0xD8 + 4
 80480b10  lwz    r4, 0x0010 (r3)
 80480b14  rlwinm    r3, r18, 4, 0, 27 (0fffffff)
 80480b18  addi    r0, r3, 12
 80480b1c  lwzx    r18, r4, r0
 80480b20  b    ->0x80480B38
-80480b24  addi    r4, r16, 220
+
+; toLeft
+80480b24  addi    r4, r16, 0xD8 + 4
 80480b28  lwz    r3, 0x0010 (r4)
 80480b2c  rlwinm    r5, r18, 4, 0, 27 (0fffffff)
 80480b30  addi    r4, r5, 8
 80480b34  lwzx    r18, r3, r4
-80480b38  addi    r3, r16, 220
+
+; checkIfValue
+80480b38  addi    r3, r16, 0xD8 + 4
 80480b3c  lwz    r3, 0x0004 (r3)
 80480b40  cmpw    r18, r3
 80480b44  bge+     ->0x804809EC
+
 80480b48  stw    r18, 0x0014 (sp)
 80480b4c  lwz    r22, 0x0014 (sp)
+
 80480b50  mr    r27, r22
 80480b54  cmpwi    r27, 0
-80480b58  beq-     ->0x80480D38
+80480b58  beq-     80480d38
+
+; do something with it
 80480b5c  subi    r24, r27, 1
 80480b60  li    r17, 0
 80480b64  lwz    r0, 0x0018 (r31)
@@ -1011,10 +1058,12 @@ decode_rawByte:
 80480d2c  slw    r0, r3, r5
 80480d30  lwz    r4, 0x0010 (sp)
 80480d34  add    r27, r0, r4
-80480d38  sub    r3, r23, r27
+
+80480d38
+    sub    r3, r23, r27
 80480d3c  subi    r3, r3, 1
 80480d40  rlwinm    r27, r3, 0, 18, 31 (00003fff)
-80480d44  b       80480D98
+80480d44  b       80480d98
 
 80480d48  mr      r0, r27
 80480d4c  addi    r27, r27, 1
@@ -1022,29 +1071,32 @@ decode_rawByte:
 80480d54  lbzx    r3, r4, r0
 80480d58  stw     r3, 0x0030 (sp)
 
-80480d5c  lwz     r3, 0x0030 (sp)
-80480d60  extsb   r0, r3
-80480d64  lwz     r5, 0x40F4 (r16)
-80480d68  lwz     r3, 0x40F8 (r16)
-80480d74  stbx    r0, r5, r3
-80480d6c  addi    r4, r3, 1
-80480d70  stw     r4, 0x40F8 (r16)
+    ; Store decoded value in the output file
+    lwz     r3, 0x0030 (sp)                     ; Get the decoded value, this should be because an inline function.
+    extsb   r0, r3                              ; ..
+    lwz     r5, 0x40F4 (r16)                    ; Get output file pointer
+    lwz     r3, 0x40F8 (r16)                    ; Get current decoded position.
+    stbx    r0, r5, r3                          ; Store the decoded byte in the output file.
+    addi    r4, r3, 1                           ; Increment output position.
+    stw     r4, 0x40F8 (r16)                    ; ...
 
-80480d78  lwz     r0, 0x0030 (sp)
-80480d7c  rlwinm  r5, r0, 0, 24, 31 (000000ff)
-80480d80  mr      r3, r23
-80480d84  addi    r23, r23, 1
-80480d88  addi    r4, r16, 240
-80480d8c  stbx    r5, r4, r3
-80480d90  rlwinm  r23, r23, 0, 18, 31 (00003fff)
-80480d94  rlwinm  r27, r27, 0, 18, 31 (00003fff)
+    ; Update a node value (Adaptive Huffman)
+    lwz     r0, 0x0030 (sp)                     ; Get the decoded value.
+    rlwinm  r5, r0, 0, 24, 31 (000000ff)        ; Apply 0xFF AND mask (get a byte).
+    mr      r3, r23                             ; Move X
+    addi    r4, r16, 0xF0
+    stbx    r5, r4, r3
+    addi    r23, r23, 1                         ; Increment X
+    rlwinm  r23, r23, 0, 18, 31 (00003fff)      ; Make sure R23 is not bigger than 2^14
+    rlwinm  r27, r27, 0, 18, 31 (00003fff)      ; Make sure R27 is not bigger than 2^14
 
+; Check loop counter and decrement it
 80480d98
     lwz     r3, 0x0034 (sp)
-80480d9c  subi    r0, r3, 1
-80480da0  stw     r0, 0x0034 (sp)
-80480da4  cmpwi   r0, 0
-80480da8  bge+    80480D48
+    subi    r0, r3, 1
+    stw     r0, 0x0034 (sp)
+    cmpwi   r0, 0
+    bge+    80480D48
 
 incr_loop:
     ; Increment
