@@ -2,9 +2,16 @@
 ;; Use only for learning purpouse
 ;;
 ;; THIS IS A MODIFIED VERSION OF THE DEFLATE (RFC 1951) ALGORITHM.
+;; The first 4 bytes are discarted. They are the decoded file size XOR 0xFFFFFFFF (that is, a NOT).
+;; Function address: 8047feb8
 ;; Output file at (dynamic): 801BC760
 ;; Encoded file hard-coded to 0x806321A0
+;; Remember to pad the files to 0x20 bytes wihtout taking into account first 4 bytes.
+
 ;; Static registers
+;; R16-0x7F80: Remaining size (before reading it's set to chunk_size if it's bigger).
+;; R16-0x7F7C: File position.
+;; R16-0x7F78: File size.
 ;; R16+0x008C: (set to 0 at init).
 ;; R16+0x00C8:
 ;; R16+0x00CC: Huffman root node index (0x200)
@@ -28,7 +35,7 @@
 ;; R31+0x20: Alternative input file position.
 ;; R31+0x24: Current encoded position (set to 0 at init).
 ;; R31+0x28: Current encoded block size.
-;; R31+0x2C: File path
+;; R31+0x2C: File size + File path
 ;; SP+0x08: Codework huffman tree2 bit.
 ;; SP+0x0C: Codework huffman tree1 bit.
 ;; SP+0x14: Current huffman tree2 value
@@ -1001,7 +1008,7 @@ decode_rawByte:
 80480c48  lwz    r5, -0x7F80 (r16)
 80480c4c  lwz    r6, -0x7F7C (r16)
 80480c50  li    r7, 0
-80480c54  bl    ->0x80522458
+80480c54  bl    ->0x80522458            ; CRASH if no more data to read
 80480c58  stw    r3, 0x0028 (r31)
 80480c5c  cmpwi    r3, 0
 80480c60  bge-     ->0x80480C7C
