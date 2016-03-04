@@ -10,8 +10,10 @@
 
 ;; Static registers
 ;; R16-0x7F80: Remaining size (before reading it's set to chunk_size if it's bigger).
+;; R16-0x7F80:
 ;; R16-0x7F7C: File position.
 ;; R16-0x7F78: File size.
+;; R16-0x7F74:
 ;; R16+0x008C: (set to 0 at init).
 ;; R16+0x00C8:
 ;; R16+0x00CC: Huffman root node index (0x200)
@@ -102,11 +104,14 @@ start:
 8047ff70  stw    r3, 0x008C (r16)
 8047ff74  li    r5, 8
 8047ff78  stw    r5, 0x00C8 (r16)
+
+; Set the root node index
 8047ff7c  li    r3, 512
-8047ff80  addi    r4, r16, 200
+8047ff80  addi    r4, r16, 0xC8
 8047ff84  stw    r3, 0x0004 (r4)
+
 8047ff88  lwz    r3, 0x008C (r16)
-8047ff8c  subi    r0, r16, 32628
+8047ff8c  subi    r0, r16, 0x7F74
 8047ff90  add    r4, r0, r3
 8047ff94  addi    r3, r16, 200
 8047ff98  stw    r4, 0x0010 (r3)
@@ -180,6 +185,7 @@ start:
 804800a8  stw    r6, 0x008C (r16)
 804800ac  li    r30, 0
 804800b0  b    ->0x80480154
+
 804800b4  li    r3, 0
 804800b8  addi    r4, r16, 180
 804800bc  lwz    r5, 0x0008 (r4)
@@ -225,6 +231,7 @@ start:
 8048015c  cmplw    r30, r3
 80480160  blt+     ->0x804800B4
 80480164  b    ->0x804801C8
+
 80480168  li    r0, 0
 8048016c  addi    r3, r16, 180
 80480170  lwz    r3, 0x0010 (r3)
@@ -256,6 +263,7 @@ start:
 804801d8  blt+     ->0x80480168
 804801dc  li    r29, 0
 804801e0  b    ->0x80480284
+
 804801e4  li    r0, 0
 804801e8  addi    r4, r16, 200
 804801ec  lwz    r3, 0x0008 (r4)
@@ -301,6 +309,7 @@ start:
 8048028c  cmplw    r29, r0
 80480290  blt+     ->0x804801E4
 80480294  b    ->0x804802F8
+
 80480298  li    r4, 0
 8048029c  addi    r3, r16, 200
 804802a0  lwz    r3, 0x0010 (r3)
@@ -332,6 +341,7 @@ start:
 80480308  blt+     ->0x80480298
 8048030c  li    r28, 0
 80480310  b    ->0x804803B4
+
 80480314  li    r4, 0
 80480318  addi    r3, r16, 220
 8048031c  lwz    r3, 0x0008 (r3)
@@ -377,7 +387,9 @@ start:
 804803bc  cmplw    r28, r3
 804803c0  blt+     ->0x80480314
 804803c4  b    ->0x80480428
-804803c8  li    r5, 0
+
+804803c8
+    li    r5, 0
 804803cc  addi    r4, r16, 220
 804803d0  lwz    r3, 0x0010 (r4)
 804803d4  rlwinm    r0, r28, 4, 0, 27 (0fffffff)
@@ -408,15 +420,20 @@ start:
 80480438  blt+     ->0x804803C8
 8048043c  li    r27, 0
 80480440  b    ->0x80480454
-80480444  li    r3, 0
-80480448  addi    r4, r16, 240
-8048044c  stbx    r3, r4, r27
-80480450  addi    r27, r27, 1
-80480454  cmplwi    r27, 16384
-80480458  blt+     ->0x80480444
-8048045c  li    r3, 0
-80480460  stw    r3, 0x0034 (sp)
-80480464  li    r23, 0
+
+80480444
+    li      r3, 0
+    addi    r4, r16, 240
+    stbx    r3, r4, r27
+    addi    r27, r27, 1
+
+80480454
+    cmplwi  r27, 16384
+    blt+    0x80480444
+
+    li      r3, 0
+    stw     r3, 0x0034 (sp)
+    li      r23, 0
 
 80480468
     li    r26, 8
@@ -425,6 +442,7 @@ start:
 80480474  cmpwi    r3, 0
 80480478  beq-     ->0x804805EC
 8048047c  b    ->0x804804CC
+
 80480480  lwz    r0, 0x0010 (r31)
 80480484  sub    r26, r26, r0
 80480488  lwz    r4, 0x0008 (r31)
@@ -444,7 +462,9 @@ start:
 804804c0  stw    r5, 0x0008 (r31)
 804804c4  li    r4, 8
 804804c8  stw    r4, 0x0010 (r31)
-804804cc  lwz    r3, 0x0010 (r31)
+
+804804cc
+    lwz     r3, 0x0010 (r31)
 804804d0  cmpw    r26, r3
 804804d4  bgt+     ->0x80480480
 804804d8  lwz    r0, 0x0010 (r31)
@@ -460,6 +480,7 @@ start:
 80480500  or    r3, r21, r0
 80480504  stw    r3, 0x0020 (sp)
 80480508  b    ->0x80480628
+
 8048050c  lwz    r4, 0x0010 (r31)
 80480510  sub    r26, r26, r4
 80480514  lwz    r5, 0x0008 (r31)
@@ -474,49 +495,59 @@ start:
 80480538  lwz    r3, 0x0028 (r31)
 8048053c  cmpw    r4, r3
 80480540  blt-     ->0x804805C0
-80480544  addi    r3, r31, 44
-80480548  lis    r5, 0x8063
-8048054c  addi    r4, r5, 8608
-80480550  lwz    r5, -0x7F80 (r16)
-80480554  lwz    r6, -0x7F7C (r16)
-80480558  li    r7, 0
-8048055c  bl    ->0x80522458
-80480560  stw    r3, 0x0028 (r31)
-80480564  cmpwi    r3, 0
-80480568  bge-     ->0x80480580
-8048056c  addi    r3, r31, 44
-80480570  bl    ->0x80069358
-80480574  li    r0, 0
-80480578  stw    r0, 0x0020 (sp)
-8048057c  b    ->0x80480628
-80480580  li    r0, 0
-80480584  stw    r0, 0x0024 (r31)
-80480588  lwz    r5, -0x7F7C (r16)
-8048058c  lwz    r0, 0x0028 (r31)
-80480590  add    r3, r5, r0
-80480594  stw    r3, -0x7F7C (r16)
-80480598  lwz    r4, -0x7F78 (r16)
-8048059c  lwz    r3, -0x7F7C (r16)
-804805a0  lwz    r0, -0x7F80 (r16)
-804805a4  add    r0, r3, r0
+
+80480544  addi    r3, r31, 0x2C         ; File size + File path
+80480548  lis     r5, 0x8063            ; File pointer
+8048054c  addi    r4, r5, 0x21A0        ; ...
+80480550  lwz     r5, -0x7F80 (r16)
+80480554  lwz     r6, -0x7F7C (r16)     ; File position
+80480558  li      r7, 0
+8048055c  bl      0x80522458
+80480560  stw     r3, 0x0028 (r31)      ; Current encoded block size
+80480564  cmpwi   r3, 0                 ; If zero get more
+80480568  bge-    0x80480580            ; ... data
+
+; Load more data from file?
+8048056c  addi    r3, r31, 0x2C         ; File size + File path
+80480570  bl      0x80069358            ; Load data from file?
+80480574  li      r0, 0                 ; Reset the position in encoded block?
+80480578  stw     r0, 0x0020 (sp)       ; Position in encoded block?
+8048057c  b       0x80480628
+
+80480580
+    li      r0, 0
+80480584  stw     r0, 0x0024 (r31)
+80480588  lwz     r5, -0x7F7C (r16)
+8048058c  lwz     r0, 0x0028 (r31)
+80480590  add     r3, r5, r0
+80480594  stw     r3, -0x7F7C (r16)
+80480598  lwz     r4, -0x7F78 (r16)
+8048059c  lwz     r3, -0x7F7C (r16)
+804805a0  lwz     r0, -0x7F80 (r16)
+804805a4  add     r0, r3, r0
 804805a8  cmpw    r4, r0
-804805ac  bge-     ->0x804805C0
+804805ac  bge-    0x804805C0
+
 804805b0  lwz    r6, -0x7F7C (r16)
 804805b4  lwz    r3, -0x7F78 (r16)
 804805b8  sub    r4, r3, r6
 804805bc  stw    r4, -0x7F80 (r16)
-804805c0  lwz    r5, 0x0024 (r31)
+
+804805c0
+    lwz    r5, 0x0024 (r31)
 804805c4  mr    r4, r5
 804805c8  addi    r0, r5, 1
 804805cc  stw    r0, 0x0024 (r31)
 804805d0  lis    r3, 0x8063
-804805d4  addi    r3, r3, 8608
+804805d4  addi    r3, r3, 0x21A0
 804805d8  add    r4, r3, r4
 804805dc  lbz    r4, 0 (r4)
 804805e0  stw    r4, 0x0008 (r31)
 804805e4  li    r0, 8
 804805e8  stw    r0, 0x0010 (r31)
-804805ec  lwz    r3, 0x0010 (r31)
+
+804805ec
+    lwz    r3, 0x0010 (r31)
 804805f0  cmpw    r26, r3
 804805f4  bgt+     ->0x8048050C
 804805f8  lwz    r4, 0x0010 (r31)
@@ -531,7 +562,9 @@ start:
 8048061c  and    r5, r4, r3
 80480620  or    r4, r21, r5
 80480624  stw    r4, 0x0020 (sp)
-80480628  lwz    r4, 0x0020 (sp)
+
+80480628
+    lwz    r4, 0x0020 (sp)
 8048062c  stw    r4, 0x40F0 (r16)
 80480630  li    r25, 8
 80480634  li    r20, 0
@@ -590,7 +623,7 @@ start:
 80480708  blt-     ->0x80480788
 8048070c  addi    r3, r31, 44
 80480710  lis    r4, 0x8063
-80480714  addi    r4, r4, 8608
+80480714  addi    r4, r4, 0x21A0
 80480718  lwz    r5, -0x7F80 (r16)
 8048071c  lwz    r6, -0x7F7C (r16)
 80480720  li    r7, 0
@@ -599,7 +632,7 @@ start:
 8048072c  cmpwi    r3, 0
 80480730  bge-     ->0x80480748
 80480734  addi    r3, r31, 44
-80480738  bl    ->0x80069358
+80480738  bl    ->0x80069358            ; Load data from file?
 8048073c  li    r5, 0
 80480740  stw    r5, 0x001C (sp)
 80480744  b    ->0x804807F0
@@ -624,7 +657,7 @@ start:
 80480790  addi    r0, r3, 1
 80480794  stw    r0, 0x0024 (r31)
 80480798  lis    r5, 0x8063
-8048079c  addi    r3, r5, 8608
+8048079c  addi    r3, r5, 0x21A0
 804807a0  add    r4, r3, r4
 804807a4  lbz    r3, 0 (r4)
 804807a8  stw    r3, 0x0008 (r31)
@@ -868,7 +901,7 @@ decode_rawByte:
 80480a58  blt-    80480AD0
 80480a5c  addi    r3, r31, 44
 80480a60  lis     r5, 0x8063
-80480a64  addi    r4, r5, 8608
+80480a64  addi    r4, r5, 0x21A0
 80480a68  lwz     r5, -0x7F80 (r16)
 80480a6c  lwz     r6, -0x7F7C (r16)
 80480a70  li      r7, 0
@@ -902,7 +935,7 @@ decode_rawByte:
 80480ad8  addi     r0, r5, 1
 80480adc  stw      r0, 0x0024 (r31)
 80480ae0  lis      r3, 0x8063
-80480ae4  addi     r0, r3, 8608
+80480ae4  addi     r0, r3, 0x21A0
 80480ae8  add      r3, r0, r4
 80480aec  lbz      r4, 0 (r3)
 80480af0  stw      r4, 0x0008 (r31)
@@ -1004,7 +1037,7 @@ decode_rawByte:
 80480c38  blt-     ->0x80480CBC
 80480c3c  addi    r3, r31, 44
 80480c40  lis    r5, 0x8063
-80480c44  addi    r4, r5, 8608
+80480c44  addi    r4, r5, 0x21A0
 80480c48  lwz    r5, -0x7F80 (r16)
 80480c4c  lwz    r6, -0x7F7C (r16)
 80480c50  li    r7, 0
@@ -1013,7 +1046,7 @@ decode_rawByte:
 80480c5c  cmpwi    r3, 0
 80480c60  bge-     ->0x80480C7C
 80480c64  addi    r3, r31, 44
-80480c68  bl    ->0x80069358
+80480c68  bl    ->0x80069358            ; Load more data from file?
 80480c6c  mr    r4, r3
 80480c70  li    r4, 0
 80480c74  stw    r4, 0x0010 (sp)
@@ -1039,7 +1072,7 @@ decode_rawByte:
 80480cc4  addi    r3, r5, 1
 80480cc8  stw    r3, 0x0024 (r31)
 80480ccc  lis    r6, 0x8063
-80480cd0  addi    r0, r6, 8608
+80480cd0  addi    r0, r6, 0x21A0
 80480cd4  add    r5, r0, r4
 80480cd8  lbz    r3, 0 (r5)
 80480cdc  stw    r3, 0x0008 (r31)
